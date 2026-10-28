@@ -1,0 +1,8 @@
+# Hemligheter och Willys-inloggningen stannar på datorn – aldrig i repot
+.env
+.env.*
+browser-profiles/
+# Kodens utcheckning i GitHub Actions
+kod/
+__pycache__/
+.DS_Store

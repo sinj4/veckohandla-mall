@@ -1,0 +1,155 @@
+name: Veckohandla
+
+on:
+  schedule:
+    # Måndagar 05, 07 och 09 UTC = 07/09/11 sommartid, 06/08/10 vintertid.
+    # Första lyckade körningen gäller; senare avslutas direkt (--en-gang-per-vecka).
+    # Separata rader så att github.event.schedule visar vilken körning det är (09 är sista).
+    - cron: "0 5 * * 1"
+    - cron: "0 7 * * 1"
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      onskemal:
+        description: "Önskemål för den här veckan (valfritt), t.ex. fisk två gånger, ingen kyckling"
+        required: false
+        default: ""
+        type: string
+      planera_om:
+        description: "Planera om även om veckans plan redan finns"
+        required: false
+        default: false
+        type: boolean
+      val:
+        description: "Välj bland veckans förslag, t.ex. 2 4 5 8 9 (första = måndag). Gör korgfilen; fyll den med ./fyll.sh"
+        required: false
+        default: ""
+        type: string
+
+# Två körningar får aldrig gå samtidigt (de skriver båda till data/)
+concurrency:
+  group: veckohandla
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  vecka:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checka ut config och data
+        uses: actions/checkout@v7
+
+      - name: Kontrollera config.yaml och secrets
+        env:
+          HAR_CLAUDE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          HAR_API_NYCKEL: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          HAR_SMTP: ${{ secrets.SMTP_PASSWORD != '' }}
+        run: |
+          saknas=0
+          if [ ! -f config.yaml ]; then
+            echo "::error::config.yaml saknas i repot. Kör python -m veckohandla init på datorn och ladda upp filen, eller öppna config.example.yaml, redigera och spara den som config.yaml (se README)."
+            saknas=1
+          fi
+          if [ "$HAR_CLAUDE_TOKEN" != "true" ] && [ "$HAR_API_NYCKEL" != "true" ]; then
+            echo "::error::Secret CLAUDE_CODE_OAUTH_TOKEN saknas (skapa den med claude setup-token), eller lägg in ANTHROPIC_API_KEY. Settings → Secrets and variables → Actions → New repository secret."
+            saknas=1
+          fi
+          if [ "$HAR_SMTP" != "true" ]; then
+            echo "::error::Secret SMTP_PASSWORD saknas (app-lösenordet för mejlet). Settings → Secrets and variables → Actions → New repository secret."
+            saknas=1
+          fi
+          if [ "$saknas" -ne 0 ]; then exit 1; fi
+          echo "config.yaml och secrets finns."
+
+      - name: Checka ut koden (sinj4/veckohandla)
+        uses: actions/checkout@v7
+        with:
+          repository: sinj4/veckohandla
+          path: kod
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Installera Python-beroenden
+        run: pip install -r kod/requirements.txt
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Installera Claude Code
+        run: |
+          npm install -g @anthropic-ai/claude-code@latest
+          echo "$(npm prefix -g)/bin" >> "$GITHUB_PATH"
+
+      - name: Visa Claude Code-binär
+        run: |
+          which -a claude
+          claude --version
+
+      # Ingen Playwright-installation: korgen fylls på Macen med fyll.sh
+      - name: Planera veckan, skriv rapport och mejla
+        working-directory: kod
+        env:
+          VECKOHANDLA_CONFIG: ${{ github.workspace }}/config.yaml
+          VECKOHANDLA_DATA: ${{ github.workspace }}/data
+          # Visas i rapporten: korgen fylls på Macen
+          VECKOHANDLA_FYLL_KOMMANDO: ./fyll.sh
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Alternativ till abonnemanget: betalas per token
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          # Indata via miljövariabler, aldrig direkt i skriptet
+          ONSKEMAL: ${{ inputs.onskemal }}
+          PLANERA_OM: ${{ inputs.planera_om }}
+          VAL: ${{ inputs.val }}
+          # Kampanjer som inte är uppe räknas som fel i sista schemalagda körningen och i manuella körningar
+          SISTA_FORSOKET: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '0 9 * * 1' }}
+        run: |
+          # Använd npm-installationen, inte en äldre claude som redan finns på runnern
+          export CLAUDE_BIN="$(npm prefix -g)/bin/claude"
+          if [ -n "$VAL" ]; then
+            # Val från mobilen: inköpslista och korgfil för de valda rätterna, korgen fylls sedan med ./fyll.sh
+            read -r -a nummer <<< "${VAL//,/ }"
+            args=(valj "${nummer[@]}")
+          else
+            args=(kor)
+            if [ "$PLANERA_OM" != "true" ]; then args+=(--en-gang-per-vecka); fi
+            if [ -n "$ONSKEMAL" ]; then args+=(--onskemal "$ONSKEMAL"); fi
+          fi
+          set +e
+          python -m veckohandla "${args[@]}"
+          kod=$?
+          set -e
+          if [ "$kod" -eq 3 ]; then
+            if [ "$SISTA_FORSOKET" = "true" ]; then
+              echo "::error::Veckans kampanjer kom inte upp, ingen plan gjord"
+              exit 3
+            fi
+            echo "::notice::Veckans kampanjer är inte uppe än – nästa schemalagda körning försöker igen."
+            exit 0
+          fi
+          if [ "$kod" -eq 4 ]; then
+            echo "::error::Rapporten är sparad i data/ men mejlet skickades inte – se loggen ovan"
+            exit 4
+          fi
+          exit "$kod"
+
+      - name: Spara data/ i repot
+        if: always() && hashFiles('config.yaml') != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "Inget nytt i data/"
+            exit 0
+          fi
+          git commit -m "Veckokörning $(date -u +%G-v%V)"
+          # Hämta ev. ändringar som gjorts under körningen (t.ex. config.yaml redigerad på GitHub)
+          git pull --rebase
+          git push

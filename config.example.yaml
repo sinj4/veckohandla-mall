@@ -1,0 +1,106 @@
+# Veckohandla – inställningar
+# Skapa config.yaml med guiden: python -m veckohandla init
+# (eller kopiera för hand: cp config.example.yaml config.yaml)
+
+hushall:
+  vuxna: 2
+  barn: [9, 7]          # åldrar
+  middagar_per_vecka: 5
+  portioner_per_middag: 4
+  # Matlådor (valfritt, standard av): de här dagarna lagas extra portioner och inköpslistan räknar med dem
+  # matlador:
+  #   dagar: [tisdag, torsdag]
+  #   extra_portioner: 2
+  # Fritext som skickas till menyplaneraren
+  preferenser: >
+    Barnvänlig vardagsmat, max ca 40 min tillagning på vardagar.
+    Gärna variation: fisk minst en gång, vegetariskt minst en gång.
+    Undvik väldigt stark mat.
+  # Hårda krav – gäller både menyn och varje vald produkt, t.ex.:
+  #   - fläsk/griskött i alla former (även korv, falukorv, blandfärs, bacon, skinka)
+  #   - nötter
+  undvik: []
+  # Spärrfilter i koden: produkter vars namn innehåller något av orden tas bort innan Claude
+  # ser dem – ett skyddsnät för hårda krav. Exempel för fläskfritt:
+  #   [fläsk, gris, bacon, skinka, korv, salami, chorizo, karré, kassler, isterband, blandfärs,
+  #    gyros, leverpastej, mortadella, kåldolm, ister, coppa, nduja, lardo, pork]
+  sparrord: []
+  # Extra ord som bara jämförs mot ingredienslistan för valda produkter (utöver sparrord).
+  # Fångar t.ex. köttbullar med fläsk utan att stoppa köttbullar på bara nöt. Exempel för fläskfritt:
+  #   [fläsk, griskött, gris, bacon, skinka, ister, svinkött]
+  sparrord_ingredienser: []
+  # Varor som alltid går åt: köps i den förpackning som har lägst pris per enhet, även om den är
+  # större än veckans behov (tak ca 30 st eller 2 kg per förpackning). Matchar ord i inköpsradens vara.
+  # Ange antingen bara namnet, eller {vara, per_vecka} där per_vecka är vad hushållet gör av med
+  # totalt per vecka (inte bara till middagarna). Med per_vecka uppskattas lagret ur de fyra senaste
+  # korgfilerna, och räcker det köps varan inte – den listas under "Kolla om du har hemma".
+  gar_alltid_at:
+    - {vara: ägg, per_vecka: 12}
+    # - mjölk
+
+# Basvaror som alltid finns hemma – köps inte
+skafferi:
+  - salt
+  - svartpeppar
+  - olivolja
+  - rapsolja
+  - smör
+  - vetemjöl
+  - socker
+  - buljongtärningar
+  - soja
+  - torkade kryddor
+
+# Varor som läggs till i varukorgen varje vecka oavsett meny
+alltid_kop:
+  - {namn: "mellanmjölk 1,5 l", antal: 2}
+  - {namn: "matbröd", antal: 1}
+  - {namn: "bananer", antal: 8}
+
+butiker:
+  e_handel: willys        # willys eller hemkop: kedjan där korgen fylls och varor söks (standard willys)
+  willys:
+    namn: Willys Exempelstad
+    store_id: "0000"      # e-handelsbutiken – hitta din: python -m veckohandla hitta-willys <ort>
+    i_butik: true         # hämta även kampanjer som bara gäller i butiken
+  # Hemköp (samma ägare och API som Willys). Med e_handel: willys jämförs bara Hemköps butikskampanjer,
+  # som ICA. Med e_handel: hemkop blir Hemköp korgen och Willys jämförelse.
+  # hemkop:
+  #   namn: Hemköp Nyköping C
+  #   store_id: "4685"    # hitta din: python -m veckohandla hitta-hemkop <ort>
+  #   i_butik: true
+  # ICA-butiker används för kampanjjämförelse; billigare ICA-varor flaggas i rapporten (korgen är ändå komplett).
+  # Slug = sista delen av butikens erbjudandesida, t.ex. https://www.ica.se/erbjudanden/<slug>/
+  # bara_lokalt: true = hämta inte butiken i GitHub Actions (ICA svarar 403 till molnet); den jämförs
+  # då när du väljer rätter på datorn, och rapporten säger det med en neutral rad i stället för en varning.
+  ica:
+    - namn: ICA Supermarket Exempelstad
+      erbjudande_slug: ica-supermarket-exempelstad-000000
+      bara_lokalt: true
+
+optimering:
+  # Allt som finns i e-handeln ligger alltid i korgen. Billigare butiksalternativ flaggas i rapporten
+  # bara om butikens samlade besparing når tröskeln:
+  min_besparing_for_delning_kr: 75       # per ICA-butik
+  min_besparing_willys_i_butik_kr: 10    # Willys butikskampanjer
+  # Kampanjkategorier som inte är mat och inte skickas till menyplaneraren.
+  # Willys: första ledet i googleAnalyticsCategory, ICA: articleGroupName.
+  # Saknas nyckeln används samma lista som standard; [] stänger av filtret.
+  uteslut_kategorier: [halsa-och-skonhet, hem-och-stad, djur, blommor-och-tradgard,
+                       "Hälsa & skönhet", "Hem & fritid"]
+
+epost:
+  till: du@example.com
+  fran: du@example.com
+  smtp_host: smtp.example.com   # SMTP-servern hos din e-postleverantör
+  smtp_port: 587
+  # Lösenord läses från miljövariabeln SMTP_PASSWORD (för Google-konton: ett app-lösenord)
+
+meny:
+  lage: auto        # auto = färdig meny varje vecka, val = förslag som du väljer bland
+  forslag: 10       # antal förslag i valläget
+
+claude:
+  model: claude-opus-5-5             # standard för båda stegen
+  model_meny: claude-opus-5-5        # menyplanering (kräver mest omdöme)
+  model_produkter: claude-sonnet-5-5 # produktval (mer mekaniskt)

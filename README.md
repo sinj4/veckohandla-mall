@@ -5,7 +5,7 @@ Mall för att köra [veckohandla](https://github.com/sinj4/veckohandla) i GitHub
 Det här behövs:
 - ett GitHub-konto
 - Claude Code med ett Claude Pro- eller Max-abonnemang, eller en Anthropic API-nyckel
-- en e-postadress att skicka från (ett Google-konto med app-lösenord fungerar bra)
+- en e-postadress att skicka från (Gmail med app-lösenord fungerar bra)
 - en dator med Python 3.12 eller senare, för installationsguiden och för att fylla korgen
 
 ## 1. Skapa ditt eget repo från mallen
@@ -49,7 +49,7 @@ Hemligheterna läggs aldrig i filer, bara i repots inställningar.
 | Name | Värde |
 |---|---|
 | `CLAUDE_CODE_OAUTH_TOKEN` | token från `claude setup-token` |
-| `SMTP_PASSWORD` | lösenordet för mejlet; för ett Google-konto ett app-lösenord (https://myaccount.google.com/apppasswords) |
+| `SMTP_PASSWORD` | app-lösenordet för mejlet. Gmail: skapa ett app-lösenord på https://myaccount.google.com/apppasswords |
 | `ANTHROPIC_API_KEY` | *valfritt, i stället för `CLAUDE_CODE_OAUTH_TOKEN`*: API-nyckel som betalas per token |
 
 ## 4. Starta första körningen

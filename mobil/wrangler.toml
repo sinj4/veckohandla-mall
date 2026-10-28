@@ -1,0 +1,12 @@
+# Cloudflare Worker för mobilsidan. Inga hemligheter här: GITHUB_TOKEN och LANKNYCKEL läggs in med
+#   npx wrangler secret put GITHUB_TOKEN
+#   npx wrangler secret put LANKNYCKEL
+name = "veckohandla-mobil"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[vars]
+GITHUB_REPO = "ditt-namn/veckohandla-hem"   # ÄNDRA: ditt repo med config.yaml, data/ och workflowen
+WORKFLOW = "vecka.yml"
+GREN = "main"

@@ -25,6 +25,11 @@ on:
         required: false
         default: ""
         type: string
+      betyg:
+        description: "Betyg som JSON från mobilsidan (fylls i av mobil/). Sparas i data/betyg.json"
+        required: false
+        default: ""
+        type: string
 
 # Två körningar får aldrig gå samtidigt (de skriver båda till data/)
 concurrency:
@@ -107,12 +112,20 @@ jobs:
           ONSKEMAL: ${{ inputs.onskemal }}
           PLANERA_OM: ${{ inputs.planera_om }}
           VAL: ${{ inputs.val }}
+          BETYG: ${{ inputs.betyg }}
+          # Mobilsidan (mobil/): knapparna Välj rätter och Sätt betyg i mejlen, med veckosignerade länkar.
+          # Saknas de visas inga knappar. GitHub maskerar värdena i loggen.
+          MOBIL_ADRESS: ${{ secrets.MOBIL_ADRESS }}
+          LANKNYCKEL: ${{ secrets.LANKNYCKEL }}
           # Kampanjer som inte är uppe räknas som fel i sista schemalagda körningen och i manuella körningar
           SISTA_FORSOKET: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '0 9 * * 1' }}
         run: |
           # Använd npm-installationen, inte en äldre claude som redan finns på runnern
           export CLAUDE_BIN="$(npm prefix -g)/bin/claude"
-          if [ -n "$VAL" ]; then
+          if [ -n "$BETYG" ]; then
+            # Betyg från mobilsidan: kontrolleras mot veckans plan och sparas i data/betyg.json
+            args=(betyg --fran-text "$BETYG")
+          elif [ -n "$VAL" ]; then
             # Val från mobilen: inköpslista och korgfil för de valda rätterna, korgen fylls sedan med ./fyll.sh
             read -r -a nummer <<< "${VAL//,/ }"
             args=(valj "${nummer[@]}")

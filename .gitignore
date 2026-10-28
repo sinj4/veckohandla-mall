@@ -6,3 +6,6 @@ browser-profiles/
 kod/
 __pycache__/
 .DS_Store
+mobil/node_modules/
+mobil/.wrangler/
+mobil/.dev.vars

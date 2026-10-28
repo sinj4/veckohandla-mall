@@ -66,6 +66,9 @@ Samma sak går att göra i **GitHub-appen** på mobilen: öppna repot → **Acti
 
 Efter det sköter schemat körningen själv varje måndag morgon. GitHub stänger av schemalagda körningar i repon som inte har haft någon aktivitet på 60 dagar, men veckans commit i `data/` räknas som aktivitet.
 
+## Mobilen (valfritt)
+I katalogen `mobil/` finns en mobilsida som du lägger på hemskärmen. Där väljer du rätter, sätter betyg och fyller korgen direkt i mobilens webbläsare med knappen **📱 Fyll korgen på mobilen** och bokmärket Veckohandla. Den körs som en gratis Cloudflare Worker, och [mobil/README.md](mobil/README.md) beskriver installationen steg för steg. Med secrets `MOBIL_ADRESS` och `LANKNYCKEL` får mejlen dessutom knapparna **Välj rätter** och **Sätt betyg**.
+
 ## 5. Fyll korgen
 Korgen fylls på datorn där du är inloggad hos Willys eller Hemköp.
 

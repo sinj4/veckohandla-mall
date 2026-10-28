@@ -1,0 +1,9 @@
+{
+  "name": "veckohandla-mobil",
+  "private": true,
+  "type": "module",
+  "description": "Mobilsida för veckohandla (Cloudflare Worker). Inga beroenden.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}
